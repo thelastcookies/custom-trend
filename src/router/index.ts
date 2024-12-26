@@ -1,16 +1,17 @@
-import { createRouter, createWebHashHistory } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [{
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/common/Login.vue'),
-  }, {
     path: '/',
     name: 'Layout',
     component: () => import('@/views/layouts/Layout.vue'),
-    children: [],
+    redirect: { name: 'Diagram' },
+    children: [{
+      path: '/',
+      name: 'Trend',
+      component: () => import('@/views/trend/Index.vue'),
+    }],
   }, {
     path: '/sample',
     name: 'Sample',

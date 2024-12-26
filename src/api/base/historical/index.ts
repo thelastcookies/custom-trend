@@ -1,17 +1,10 @@
-import type { AdminResponseBody } from '@/api/admin/types';
-import type { HisTagParams, HistoricalRequestBody, IntervalRequestBody } from '@/api/base/historical/types';
-import type { ValueResponseBody } from '@/api/base/types';
+import type { BaseResponseBody, TagTimeRequestBody, ValueResponseBody } from '@/api/base/types';
+import { HisDataType } from '@/constants/enums';
+import type { HisTagParams } from '@/api/base/historical/types';
 
-export const getHistorical = (data: HistoricalRequestBody) => {
-  return usePost<AdminResponseBody<ValueResponseBody>, HistoricalRequestBody>(
-    `${ADMIN_URL}/RealTime/GetHst`,
-    data,
-  );
-};
-
-export const getTrend = (data: IntervalRequestBody) => {
-  return usePost<AdminResponseBody<ValueResponseBody>, IntervalRequestBody>(
-    `${ADMIN_URL}/RealTime/GetInterp`,
+export const getTrend = (data: TagTimeRequestBody) => {
+  return usePost<BaseResponseBody<ValueResponseBody>, TagTimeRequestBody>(
+    `${BASE_URL}/taos/his`,
     data,
   );
 };
@@ -55,7 +48,7 @@ export const getTrendData = async (
     tags,
     st,
     ed = dayjs(),
-    interval = 30,
+    interval = 60,
     type = HisDataType.TAG_ARR,
     decimal,
   }: HisTagParams,
@@ -67,8 +60,8 @@ export const getTrendData = async (
     time: stStr + '-' + edStr,
     interval,
   });
-  if (!res.Success) return;
-  let tagValueArr = res.Data!.values.split('|').map(item => item.split(';'));
+  if (res.code !== 200) return;
+  let tagValueArr = res.data!.values.split('|').map(item => item.split(';'));
   let timeArr: string[] = [];
   for (
     let time = dayjs(st);

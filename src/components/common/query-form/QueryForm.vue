@@ -31,9 +31,7 @@ const emit = defineEmits<{
 const slots = useSlots();
 const slotsCount = Object.keys(slots).length;
 
-const { deviceType } = useAppStore();
-
-const ITEM_IN_LINE = deviceType === 'desktop' ? props.itemInLine : 1;
+const ITEM_IN_LINE = props.itemInLine;
 const SPAN = 24 / ITEM_IN_LINE;
 
 const formRef = ref<FormInstance>();
