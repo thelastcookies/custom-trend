@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0 (2025-01-01)
+
+
+### Features
+
+* 同步基线工程更新 ([05746ac](https://github.com/thelastcookies/custom-trend/commit/05746ac26e281a710dfa8808aecf5db64fd3c7cf))
+* 新增页面基本功能 ([953f9f5](https://github.com/thelastcookies/custom-trend/commit/953f9f5564a1f91c80004513d3b8112f60572b74))
+* 配置数据请求接口 ([9f2ea31](https://github.com/thelastcookies/custom-trend/commit/9f2ea3141147e53933b31d6d913e1ff35a7f1889))
+
 ## [0.24.0](https://github.com/thelastcookies/WEB-BASE/compare/v0.23.0...v0.24.0) (2024-12-24)
 
 
