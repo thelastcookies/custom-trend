@@ -1,10 +1,14 @@
-import type { BaseResponseBody, TagTimeRequestBody, ValueResponseBody } from '@/api/base/types';
+import type {
+  BaseResponseBody,
+  LogicalTagTimeRequestBody,
+  ValueResponseBody,
+} from '@/api/base/types';
 import { HisDataType } from '@/constants/enums';
 import type { HisTagParams } from '@/api/base/historical/types';
 
-export const getTrend = (data: TagTimeRequestBody) => {
-  return usePost<BaseResponseBody<ValueResponseBody>, TagTimeRequestBody>(
-    `${BASE_URL}/taos/his`,
+export const getTrend = (data: LogicalTagTimeRequestBody) => {
+  return usePost<BaseResponseBody<ValueResponseBody>, LogicalTagTimeRequestBody>(
+    `${BASE_URL}/tag/getHistLogical`,
     data,
   );
 };
@@ -56,7 +60,7 @@ export const getTrendData = async (
   let stStr = st.format('YYYYMMDDHHmmss');
   let edStr = ed.format('YYYYMMDDHHmmss');
   const res = await getTrend({
-    tags,
+    logicalTags: tags,
     time: stStr + '-' + edStr,
     interval,
   });

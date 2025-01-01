@@ -4,16 +4,12 @@ export interface BaseResponseBody<T = any> {
   data: ? T;
 }
 
-export interface TagsRequestBody {
-  tags: string;
-}
-
 export interface ValueResponseBody {
   values: string;
 }
 
-export interface TagTimeRequestBody extends TagsRequestBody {
+export interface LogicalTagTimeRequestBody {
+  logicalTags: string;
   time: string;
   interval: number;
 }
-
