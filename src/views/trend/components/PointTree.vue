@@ -71,8 +71,8 @@ const handleExpand = (keys: Key[]) => {
 const fetch = async () => {
   loading.value = true;
   // todo 发布时删除
-  // const { data, code } = await getTagConstruct();
-  const { data, code } = getTagConstructMock;
+  const { data, code } = await getTagConstruct();
+  // const { data, code } = getTagConstructMock;
   if (code !== 200) return;
 
   if (data) {
@@ -116,12 +116,12 @@ const setTreeNodeChildren = async (id: string) => {
   const node = findTreeNodeById(tree.value!, id)!;
   const page = node.page + 1;
   // todo 发布时删除
-  const { data, code } = getTagPointMock;
-  // const { data, code } = await getTagPoint({
-  //   size: '10',
-  //   current: String(page),
-  //   classificationId: node.classificationId,
-  // });
+  // const { data, code } = getTagPointMock;
+  const { data, code } = await getTagPoint({
+    size: '10',
+    current: String(page),
+    classificationId: node.hierarchy === 2 ? node.getId() : node.classificationId,
+  });
   if (code !== 200 || !data || !data.length) {
     return;
   }
