@@ -7,13 +7,13 @@ export interface TagConstructRecord {
 
 export interface TagPointParams {
   //分页参数每页条数
-  size?: string;
+  size?: number;
   //当前页
-  current?: string;
+  current?: number;
   //测点名称模糊查询
   tagdesc?: string;
   //结构id
-  classificationId?: string;
+  classificationId?: number;
 }
 
 export interface TagPointRecord {

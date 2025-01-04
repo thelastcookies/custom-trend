@@ -7,6 +7,9 @@ import { message, type TreeProps } from 'ant-design-vue';
 
 const tags = defineModel<TreeNodeType<TagConstructRecord>[]>('tags', { default: () => [] });
 
+//
+const alreadyLoaded = ref<(Key)[]>([]);
+
 const loading = ref(false);
 const fieldNames = ref({ children: 'children', title: 'description', key: 'id' });
 const selectedKeys = ref<(Key)[]>([]);
@@ -17,6 +20,7 @@ const checkedKeys = ref<{ checked: Key[]; halfChecked: Key[]; }>({
 const expandedKeys = ref<(Key)[]>([]);
 const autoExpandParent = ref<boolean>(true);
 const tree = ref<TreeNodeType<TagConstructRecord>[]>();
+const filteredTree = ref<TreeNodeType<TagConstructRecord>[]>();
 
 /**
  * 处理节点被选中
@@ -35,17 +39,42 @@ watch(tags, () => {
  * 处理搜索
  */
 const searchValue = ref<string>('');
+
+watch(searchValue, (val) => {
+  if (!tree.value || !tree.value.length) return;
+  if (val === '') {
+    filteredTree.value = tree.value;
+    return;
+  } else search();
+});
+
 const search = useDebounceFn(async () => {
   await setTreeNodeChildrenByDesc(searchValue.value);
 }, 500);
 
-watch(searchValue, (val) => {
-  if (!tree.value || !tree.value.length || !val) return;
-  search();
+watch(tree, () => {
+  filterTree();
+}, {
+  deep: true,
 });
 
-const filterTreeNode = (node: EventDataNode) => {
-  return searchValue.value ? node.description.indexOf(searchValue.value) > -1 : false;
+const filterTree = useDebounceFn(() => {
+  if (!tree.value) filteredTree.value = [];
+  else {
+    const treeNative = cloneDeep(tree.value);
+    filteredTree.value = filterTreeNode(treeNative);
+  }
+}, 200);
+
+const filterTreeNode = (tree: TreeNodeType<TagConstructRecord>[]) => {
+  return tree.filter((node) => {
+    const children: TreeNodeType<TagConstructRecord>[] = node.children ? filterTreeNode(node.children) : [];
+    if (node.description.indexOf(searchValue.value) > -1 || children.length > 0) {
+      if (node.hierarchy) node.setChildren(children);
+      return true;
+    }
+    return false;
+  });
 };
 
 /**
@@ -66,7 +95,6 @@ const fetch = async () => {
     // todo 发布时删除
     // const { data, code } = getTagConstructMock;
     if (code !== 200) return;
-
     if (data) {
       tree.value = createTree(listToTree(data.map(d => {
         return { ...d, ...{ selectable: true, checkable: false, page: 0 } };
@@ -88,16 +116,23 @@ fetch();
  */
 const handleLoadData: TreeProps['loadData'] = (treeNode: EventDataNode) => {
   return new Promise<void>(async (resolve, reject) => {
-    try {
-      if (!treeNode.dataRef || treeNode.dataRef.hierarchy !== 2 || treeNode.children?.length !== 0) {
+    await nextTick(async () => {
+      try {
+        if (!treeNode.dataRef || treeNode.dataRef.hierarchy !== 2
+          || treeNode.children?.length !== 0
+          // 判断以防止在 setTreeNodeChildrenByDesc 导致节点初次展开而引起的多余请求
+          || alreadyLoaded.value.includes(treeNode.dataRef.id)
+        ) {
+          resolve();
+          return;
+        }
+        await setTreeNodeChildrenById(treeNode.dataRef.id);
         resolve();
-        return;
+      } catch (e) {
+        reject();
       }
-      await setTreeNodeChildrenById(treeNode.dataRef.id);
-      resolve();
-    } catch (e) {
-      reject();
-    }
+    });
+
   });
 };
 
@@ -114,8 +149,8 @@ const setTreeNodeChildrenById = async (id: string) => {
   const node = findTreeNodeById(tree.value!, id)!;
   const page = node.page + 1;
   const { data, code } = await getTagPoint({
-    size: '10',
-    current: String(page),
+    size: 10,
+    current: page,
     classificationId: node.hierarchy === 2 ? node.getId() : node.classificationId,
     tagdesc: searchValue.value,
   });
@@ -141,9 +176,13 @@ const setTreeNodeChildrenById = async (id: string) => {
   const pNode = node.hierarchy === 2 ? node : findTreeNodeById(tree.value!, node?.classificationId!)!;
   const loadMoreId = pNode.getId() + '-load-more';
   const oldChildren = pNode.getChildren()!;
-  pNode?.setChildren([
-    ...oldChildren.filter(node => node.getId() !== loadMoreId),
-    ...children.length < 10 ? children : children.concat(new TreeNode({
+  let uniqueChildren = Array.from(new Map(
+    oldChildren.filter(node => node.getId() !== loadMoreId)
+    .concat(children).map(item => [item.id, item])).values(),
+  );
+
+  if (children.length >= 10)
+    uniqueChildren = uniqueChildren.concat(new TreeNode({
       id: loadMoreId,
       classificationId: pNode.getId(),
       description: '加载更多',
@@ -152,18 +191,22 @@ const setTreeNodeChildrenById = async (id: string) => {
       selectable: false,
       reload: true,
       page,
-    })),
-  ]);
+    }));
+  pNode?.setChildren(uniqueChildren);
+  alreadyLoaded.value = [...alreadyLoaded.value, id];
 };
 
+// 根据查询条件获取子节点并添加
 const setTreeNodeChildrenByDesc = async (desc: string) => {
   loading.value = true;
+  const treeNative = cloneDeep(tree.value);
+
   try {
     const { data, code } = await getTagPoint({
-      size: '10000',
-      current: '1',
+      size: 10000,
+      current: 1,
       tagdesc: desc,
-      classificationId: String(selectedKeys.value[0]),
+      classificationId: selectedKeys.value[0] as number || undefined,
     });
     // todo 发布时删除
     // const { data, code } = getTagPointByDescMock;
@@ -171,7 +214,6 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
       return;
     }
     // 组织数据
-    // let idChildrenMap = new Map<string, TreeNode[]>();
     let idChildrenMap: Recordable<TreeNode[]> = {};
     let expKeys: Key[] = [];
     data.forEach(item => {
@@ -183,25 +225,27 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
         reload: false,
         selectable: false,
       });
-      if (!idChildrenMap[node.classificationId]) {
-        expKeys.push(node.classificationId);
-        idChildrenMap[node.classificationId] = [node];
+      const pId = node.classificationId;
+      if (!idChildrenMap[pId]) {
+        expKeys.push(pId);
+        idChildrenMap[pId] = [node];
+        alreadyLoaded.value = [...alreadyLoaded.value, pId];
       } else {
         // 如果单个节点下的测点超过 100，则不加载并输出提示
-        if (idChildrenMap[node.classificationId].length < 100)
-          idChildrenMap[node.classificationId].push(node);
+        if (idChildrenMap[pId].length < 100)
+          idChildrenMap[pId].push(node);
         else if (alertVisible.value === false) alertVisible.value = true;
       }
     });
 
     for (const [id, children] of Object.entries(idChildrenMap)) {
-      const pNode = findTreeNodeById(tree.value!, Number(id))!;
+      const pNode = findTreeNodeById(treeNative!, Number(id))!;
       const loadMoreId = pNode.getId() + '-load-more';
       const oldChildren = pNode.getChildren()!;
-      let noDuplicateChildren = Array.from(new Set([
-        ...oldChildren.filter(node => node.getId() !== loadMoreId),
-        ...children,
-      ])).concat(new TreeNode({
+      const uniqueChildren = Array.from(new Map(
+        oldChildren.filter(node => node.getId() !== loadMoreId)
+        .concat(children).map(item => [item.id, item])).values(),
+      ).concat(new TreeNode({
         id: loadMoreId,
         classificationId: pNode.getId(),
         description: '加载更多',
@@ -211,8 +255,9 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
         reload: true,
         page: pNode.page,
       }));
-      pNode?.setChildren(noDuplicateChildren);
+      pNode?.setChildren(uniqueChildren);
     }
+    tree.value = treeNative;
     expandedKeys.value = expKeys;
     autoExpandParent.value = true;
   } catch (e) {
@@ -246,9 +291,8 @@ const alertVisible = ref(false);
         v-model:checked-keys="checkedKeys"
         :expanded-keys="expandedKeys"
         :auto-expand-parent="autoExpandParent"
-        :tree-data="tree as unknown as DataNode[]"
+        :tree-data="filteredTree as unknown as DataNode[]"
         :field-names="fieldNames"
-        :filter-tree-node="filterTreeNode"
         :load-data="handleLoadData"
         @check="handleCheck"
         @expand="handleExpand"
