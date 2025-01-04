@@ -7,9 +7,6 @@ import { message, type TreeProps } from 'ant-design-vue';
 
 const tags = defineModel<TreeNodeType<TagConstructRecord>[]>('tags', { default: () => [] });
 
-//
-const alreadyLoaded = ref<(Key)[]>([]);
-
 const loading = ref(false);
 const fieldNames = ref({ children: 'children', title: 'description', key: 'id' });
 const selectedKeys = ref<(Key)[]>([]);
@@ -19,8 +16,14 @@ const checkedKeys = ref<{ checked: Key[]; halfChecked: Key[]; }>({
 });
 const expandedKeys = ref<(Key)[]>([]);
 const autoExpandParent = ref<boolean>(true);
+
+// 树全部数据
 const tree = ref<TreeNodeType<TagConstructRecord>[]>();
+// 树前端筛选结果
 const filteredTree = ref<TreeNodeType<TagConstructRecord>[]>();
+
+// 已加载过一次的结构树节点
+const alreadyLoaded = ref<(Key)[]>([]);
 
 /**
  * 处理节点被选中
@@ -55,6 +58,7 @@ const searchValue = ref<string>('');
 //   await setTreeNodeChildrenByDesc(searchValue.value);
 // }, 500);
 
+// 监听树数据变化并更新前端筛选结果
 watch(tree, () => {
   // filterTree();
   const treeNative = cloneDeep(tree.value);
@@ -72,6 +76,7 @@ watch(tree, () => {
 //   }
 // }, 200);
 
+// 树前端筛选递归方法
 const filterTreeNode = (tree: TreeNodeType<TagConstructRecord>[]) => {
   return tree.filter((node) => {
     const children: TreeNodeType<TagConstructRecord>[] = node.children ? filterTreeNode(node.children) : [];
@@ -83,6 +88,7 @@ const filterTreeNode = (tree: TreeNodeType<TagConstructRecord>[]) => {
   });
 };
 
+// 触发搜索
 const handleSearch = async () => {
   if (!tree.value || !tree.value.length) return;
   if (searchValueInput.value === '') {
@@ -130,7 +136,6 @@ fetch();
 
 /**
  * 初次展开结构节点
- * @param treeNode
  */
 const handleLoadData: TreeProps['loadData'] = (treeNode: EventDataNode) => {
   return new Promise<void>(async (resolve, reject) => {
@@ -150,12 +155,11 @@ const handleLoadData: TreeProps['loadData'] = (treeNode: EventDataNode) => {
         reject();
       }
     });
-
   });
 };
 
 /**
- * 点击加载更多
+ * 点击已加载过一次的结构树节点的子节点中加载更多按钮
  * @param id
  */
 const handleLoadMore = async (id: string) => {
@@ -167,8 +171,9 @@ const setTreeNodeChildrenById = async (id: string) => {
   const treeNative = cloneDeep(tree.value);
   const node = findTreeNodeById(treeNative, id)!;
   const page = node.page + 1;
+  const size = 10;
   const { data, code } = await getTagPoint({
-    size: 10,
+    size,
     current: page,
     classificationId: node.hierarchy === 2 ? node.getId() : node.classificationId,
     tagdesc: searchValue.value,
@@ -190,8 +195,7 @@ const setTreeNodeChildrenById = async (id: string) => {
     });
   });
 
-  // 根据是否初次加载做不同处理
-  // 这里的判断条件是「hierarchy 为 2」
+  // 判断是「初次展开」还是「加载更多」，这里的判断条件是被点击节点的层级
   const pNode = node.hierarchy === 2 ? node : findTreeNodeById(treeNative, node?.classificationId!)!;
   const loadMoreId = pNode.getId() + '-load-more';
   const oldChildren = pNode.getChildren()!;
@@ -200,7 +204,8 @@ const setTreeNodeChildrenById = async (id: string) => {
     .concat(children).map(item => [item.id, item])).values(),
   );
 
-  if (children.length >= 10)
+  // 如果返回内容与页内条数相当，则假定还有未加载的节点
+  if (children.length === size)
     uniqueChildren = uniqueChildren.concat(new TreeNode({
       id: loadMoreId,
       classificationId: pNode.getId(),
@@ -243,19 +248,22 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
         reload: false,
         selectable: false,
       });
+
+      // 遍历返回数据，并将数据组织成 「结构树 id: children」 的形式
       const pId = node.classificationId;
       if (!idChildrenMap[pId]) {
         expKeys.push(pId);
         idChildrenMap[pId] = [node];
         alreadyLoaded.value = [...alreadyLoaded.value, pId];
       } else {
-        // 如果单个节点下的测点超过 100，则不加载并输出提示
+        // 限制单个结构树节点下挂在的子节点。如果单个节点下的节点超过 100，则超出的部分不加载并输出提示
         if (idChildrenMap[pId].length < 100)
           idChildrenMap[pId].push(node);
         else if (alertVisible.value === false) alertVisible.value = true;
       }
     });
 
+    // 遍历组织完成的数据，将子节点分别挂载到结构树节点下
     for (const [id, children] of Object.entries(idChildrenMap)) {
       const pNode = findTreeNodeById(treeNative!, Number(id))!;
       const loadMoreId = pNode.getId() + '-load-more';
