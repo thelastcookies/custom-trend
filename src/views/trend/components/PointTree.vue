@@ -76,7 +76,15 @@ const fetch = async () => {
   if (code !== 200) return;
 
   if (data) {
-    tree.value = createTree(listToTree(data.map(d => { return { ...d, ...{ checkable: false } };}) as any));
+    tree.value = createTree(listToTree(data.map(d => {
+      return {
+        ...d,
+        ...{
+          checkable: false,
+          page: 0,
+        },
+      };
+    }) as any));
     expandedKeys.value = [tree.value[0].getId()!];
   }
   loading.value = false;
@@ -91,36 +99,7 @@ const handleLoadData: TreeProps['loadData'] = (treeNode: EventDataNode) => {
         resolve();
         return;
       }
-      // todo 发布时删除
-      // const { data, code } = await getTagPoint({
-      //   size: '10',
-      //   current: '1',
-      //   classificationId: treeNode.dataRef?.id,
-      // });
-      const { data, code } = getTagPointMock;
-      if (code !== 200 || !data || !data.length) {
-        resolve();
-        return;
-      }
-      const node = findTreeNodeById(tree.value!, treeNode.dataRef.id);
-      let children: TreeNode[] = data.map(item => {
-        return new TreeNode({
-          ...item,
-          id: item.taglogicid,
-          description: item.tagdesc,
-          isLeaf: true,
-          reload: false,
-        });
-      });
-      node?.setChildren(data.length < 10 ? children : children.concat(new TreeNode({
-        id: node?.getId() + '-reload',
-        classificationId: node?.getId(),
-        description: '加载更多',
-        isLeaf: true,
-        checkable: false,
-        reload: true,
-        crtPage: 1,
-      })));
+      await setTreeNodeChildren(treeNode.dataRef.id);
       resolve();
     } catch (e) {
       reject();
@@ -129,42 +108,49 @@ const handleLoadData: TreeProps['loadData'] = (treeNode: EventDataNode) => {
 };
 
 const handleLoadMore = async (id: string) => {
+  await setTreeNodeChildren(id);
+};
+
+// 动态获取子节点并添加
+const setTreeNodeChildren = async (id: string) => {
   const node = findTreeNodeById(tree.value!, id)!;
-  const crtPage = node.crtPage + 1;
+  const page = node.page + 1;
   // todo 发布时删除
   const { data, code } = getTagPointMock;
   // const { data, code } = await getTagPoint({
   //   size: '10',
-  //   current: String(crtPage),
+  //   current: String(page),
   //   classificationId: node.classificationId,
   // });
   if (code !== 200 || !data || !data.length) {
     return;
   }
-
-  const pId = node?.classificationId!;
-  const pNode = findTreeNodeById(tree.value!, pId)!;
-
-  let children = data.map(item => {
+  // 组织数据
+  const children = data.map(item => {
     return new TreeNode({
       ...item,
-      id: item.taglogicid + '-' + node.crtPage,
+      id: item.taglogicid,
       description: item.tagdesc,
       isLeaf: true,
       reload: false,
     });
   });
+
+  // 根据是否初次加载做不同处理
+  // 这里的判断条件是「hierarchy 为 2」
+  const pNode = node.hierarchy === 2 ? node : findTreeNodeById(tree.value!, node?.classificationId!)!;
+  const loadMoreId = pNode.getId() + '-load-more';
   const oldChildren = pNode.getChildren()!;
   pNode?.setChildren([
-    ...oldChildren.splice(0, oldChildren.length - 1),
-    ...data.length < 10 ? children : children.concat(new TreeNode({
-      id: node?.getId(),
-      classificationId: pId,
+    ...oldChildren.filter(node => node.getId() !== loadMoreId),
+    ...children.length < 10 ? children : children.concat(new TreeNode({
+      id: loadMoreId,
+      classificationId: pNode.getId(),
       description: '加载更多',
       isLeaf: true,
       checkable: false,
       reload: true,
-      crtPage,
+      page,
     })),
   ]);
 };
@@ -186,10 +172,9 @@ const handleLoadMore = async (id: string) => {
         :tree-data="tree as unknown as DataNode[]"
         :field-names="fieldNames"
         :filter-tree-node="filterTreeNode"
+        :load-data="handleLoadData"
         @check="handleCheck"
         @expand="handleExpand"
-        :load-data="handleLoadData"
-        block-node
       >
         <template #title="{ id, description, reload }">
           <div class="flex tree-node-title">
