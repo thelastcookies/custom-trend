@@ -38,33 +38,39 @@ watch(tags, () => {
 /**
  * 处理搜索
  */
+// 绑定输入框内输入内容
+const searchValueInput = ref<string>('');
+// 搜索时的输入内容
 const searchValue = ref<string>('');
 
-watch(searchValue, (val) => {
-  if (!tree.value || !tree.value.length) return;
-  if (val === '') {
-    filteredTree.value = tree.value;
-    return;
-  } else search();
-});
+// watch(searchValue, (val) => {
+//   if (!tree.value || !tree.value.length) return;
+//   if (val === '') {
+//     filteredTree.value = tree.value;
+//     return;
+//   } else search();
+// });
 
-const search = useDebounceFn(async () => {
-  await setTreeNodeChildrenByDesc(searchValue.value);
-}, 500);
+// const search = useDebounceFn(async () => {
+//   await setTreeNodeChildrenByDesc(searchValue.value);
+// }, 500);
 
 watch(tree, () => {
-  filterTree();
+  // filterTree();
+  const treeNative = cloneDeep(tree.value);
+  filteredTree.value = filterTreeNode(treeNative);
+  loading.value = false;
 }, {
   deep: true,
 });
 
-const filterTree = useDebounceFn(() => {
-  if (!tree.value) filteredTree.value = [];
-  else {
-    const treeNative = cloneDeep(tree.value);
-    filteredTree.value = filterTreeNode(treeNative);
-  }
-}, 200);
+// const filterTree = useDebounceFn(() => {
+//   if (!tree.value) filteredTree.value = [];
+//   else {
+//     const treeNative = cloneDeep(tree.value);
+//     filteredTree.value = filterTreeNode(treeNative);
+//   }
+// }, 200);
 
 const filterTreeNode = (tree: TreeNodeType<TagConstructRecord>[]) => {
   return tree.filter((node) => {
@@ -75,6 +81,18 @@ const filterTreeNode = (tree: TreeNodeType<TagConstructRecord>[]) => {
     }
     return false;
   });
+};
+
+const handleSearch = async () => {
+  if (!tree.value || !tree.value.length) return;
+  if (searchValueInput.value === '') {
+    searchValue.value = '';
+    filteredTree.value = tree.value;
+    return;
+  } else {
+    loading.value = true;
+    await setTreeNodeChildrenByDesc(searchValueInput.value);
+  }
 };
 
 /**
@@ -146,7 +164,8 @@ const handleLoadMore = async (id: string) => {
 
 // 动态获取子节点并添加
 const setTreeNodeChildrenById = async (id: string) => {
-  const node = findTreeNodeById(tree.value!, id)!;
+  const treeNative = cloneDeep(tree.value);
+  const node = findTreeNodeById(treeNative, id)!;
   const page = node.page + 1;
   const { data, code } = await getTagPoint({
     size: 10,
@@ -173,7 +192,7 @@ const setTreeNodeChildrenById = async (id: string) => {
 
   // 根据是否初次加载做不同处理
   // 这里的判断条件是「hierarchy 为 2」
-  const pNode = node.hierarchy === 2 ? node : findTreeNodeById(tree.value!, node?.classificationId!)!;
+  const pNode = node.hierarchy === 2 ? node : findTreeNodeById(treeNative, node?.classificationId!)!;
   const loadMoreId = pNode.getId() + '-load-more';
   const oldChildren = pNode.getChildren()!;
   let uniqueChildren = Array.from(new Map(
@@ -193,14 +212,13 @@ const setTreeNodeChildrenById = async (id: string) => {
       page,
     }));
   pNode?.setChildren(uniqueChildren);
+  tree.value = treeNative;
   alreadyLoaded.value = [...alreadyLoaded.value, id];
 };
 
 // 根据查询条件获取子节点并添加
 const setTreeNodeChildrenByDesc = async (desc: string) => {
-  loading.value = true;
   const treeNative = cloneDeep(tree.value);
-
   try {
     const { data, code } = await getTagPoint({
       size: 10000,
@@ -257,13 +275,12 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
       }));
       pNode?.setChildren(uniqueChildren);
     }
+    searchValue.value = desc;
     tree.value = treeNative;
     expandedKeys.value = expKeys;
     autoExpandParent.value = true;
   } catch (e) {
     message.error('测点请求失败');
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -273,7 +290,11 @@ const alertVisible = ref(false);
 
 <template>
   <div class="h-full flex items-start flex-col">
-    <a-input-search v-model:value="searchValue" placeholder="可选中树节点以减小搜索范围" />
+    <a-input-search
+      v-model:value="searchValueInput"
+      placeholder="可选中树节点以减小搜索范围"
+      @search="handleSearch"
+    />
     <a-divider my-4 />
     <a-spin wrapperClassName="h-[calc(100%-65px)] w-full of-y-auto" :spinning="loading">
       <a-alert
