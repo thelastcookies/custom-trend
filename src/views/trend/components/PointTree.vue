@@ -70,24 +70,27 @@ const handleExpand = (keys: Key[]) => {
  */
 const fetch = async () => {
   loading.value = true;
-  // todo 发布时删除
-  const { data, code } = await getTagConstruct();
-  // const { data, code } = getTagConstructMock;
-  if (code !== 200) return;
+  try {
+    // todo 发布时删除
+    const { data, code } = await getTagConstruct();
+    // const { data, code } = getTagConstructMock;
+    if (code !== 200) return;
 
-  if (data) {
-    tree.value = createTree(listToTree(data.map(d => {
-      return {
-        ...d,
-        ...{
-          checkable: false,
-          page: 0,
-        },
-      };
-    }) as any));
-    expandedKeys.value = [tree.value[0].getId()!];
+    if (data) {
+      tree.value = createTree(listToTree(data.map(d => {
+        return {
+          ...d,
+          ...{
+            checkable: false,
+            page: 0,
+          },
+        };
+      }) as any));
+      expandedKeys.value = [tree.value[0].getId()!];
+    }
+  } finally {
+    loading.value = false;
   }
-  loading.value = false;
 };
 
 fetch();
