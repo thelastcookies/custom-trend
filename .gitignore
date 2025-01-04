@@ -132,7 +132,6 @@ dist
 auto-imports.d.ts
 components.d.ts
 
-/web-base/
-/web-base.*
+/bh-custom-trend.*
 
 stats.html

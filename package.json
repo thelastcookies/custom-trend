@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "vue-tsc && vite build && zip -r bh-custom-trend.zip ./bh-custom-trend && rm -r ./bh-custom-trend",
     "check": "vue-tsc",
     "preview": "vite preview",
     "prepare": "husky"
