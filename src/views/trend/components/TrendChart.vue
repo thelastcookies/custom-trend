@@ -14,7 +14,8 @@ const selectedPoints = ref<Key[]>([]);
 const selectedPointOptions = ref<DefaultOptionType>([]);
 
 const tagStatList = ref<{
-  nodeTag: string;
+  tag: string;
+  desc: string;
   max: number;
   min: number;
   avg: number;
@@ -72,7 +73,8 @@ const fetch = async () => {
     const sm = sum(tagValue);
     const avg = unref(usePrecision(sm / tagValue.length, 2));
     tagStatList.value.push({
-      nodeTag: item.getId() as string,
+      tag: item.getId() as string,
+      desc: item.description as string,
       max: max(tagValue),
       min: min(tagValue),
       avg,
@@ -97,39 +99,45 @@ const fetch = async () => {
     },
   };
 
-  await renderECharts(merge({}, generalLineChartOption, {
-    grid: {
-      left: multiCheck ? 40 + (tags.value.length - 1) * 30 + 'px' : '40px',
-    },
-    legend: {
-      data: tags.value.map(item => {
-        return { name: item, icon: 'rect' };
-      }),
-    },
-    yAxis: multiCheck ? tags.value.map((_, index) => {
-      return Object.assign({}, yAxisItem, {
-        // name: item,
-        offset: 30 * index,
-      });
-    }) : [yAxisItem],
-    series: tags.value.map((item, index) => {
-      let series = {
-        name: item,
-        type: 'line',
-        symbol: 'none',
-      };
-      if (multiCheck) {
-        series = Object.assign(series, {
-          yAxisIndex: index,
+  try {
+    await renderECharts(merge({}, generalLineChartOption, {
+      grid: {
+        left: multiCheck ? 40 + (tags.value.length - 1) * 30 + 'px' : '40px',
+      },
+      legend: {
+        itemWidth: 10,
+        itemHeight: 10,
+        top: '20px',
+        data: tags.value.map(item => {
+          return { name: item.description, icon: 'rect' };
+        }),
+      },
+      yAxis: multiCheck ? tags.value.map((_, index) => {
+        return Object.assign({}, yAxisItem, {
+          // name: item,
+          offset: 30 * index,
         });
-      }
-      return series;
-    }),
-    dataset: {
-      source: data,
-    },
-  }), true);
-  setEChartsLoading(false);
+      }) : [yAxisItem],
+      series: tags.value.map((item, index) => {
+        let series = {
+          name: item,
+          type: 'line',
+          symbol: 'none',
+        };
+        if (multiCheck) {
+          series = Object.assign(series, {
+            yAxisIndex: index,
+          });
+        }
+        return series;
+      }),
+      dataset: {
+        source: data,
+      },
+    }), true);
+  } finally {
+    setEChartsLoading(false);
+  }
 };
 
 </script>
@@ -164,11 +172,11 @@ const fetch = async () => {
       </a-col>
     </QueryForm>
     <ECharts class="h-600px bg-ant.bg-container rounded-ant.br" ref="chartRef" />
-    <a-descriptions title="测点统计" class="bg-ant.bg-container rounded-ant.br flex-1 p-3 mt-3"
-      bordered :column="4"
-    >
+    <a-descriptions title="测点统计" bordered :column="5"
+      class="bg-ant.bg-container rounded-ant.br flex-1 p-3 mt-3">
       <template v-for="item in tagStatList">
-        <a-descriptions-item label="测点">{{ item.nodeTag }}</a-descriptions-item>
+        <a-descriptions-item label="测点">{{ item.tag }}</a-descriptions-item>
+        <a-descriptions-item label="描述">{{ item.desc }}</a-descriptions-item>
         <a-descriptions-item label="平均值">{{ item.avg }}</a-descriptions-item>
         <a-descriptions-item label="最大值">{{ item.max }}</a-descriptions-item>
         <a-descriptions-item label="最小值">{{ item.min }}</a-descriptions-item>
