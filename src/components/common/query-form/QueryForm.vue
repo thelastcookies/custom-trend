@@ -108,6 +108,9 @@ const handleClear = () => {
     @finishFailed="onFinishFailed"
   >
     <a-row>
+      <template v-if="slotsCount">
+        <slot name="default"></slot>
+      </template>
       <template v-for="(item, idx) in fields" :key="idx">
         <a-col v-show="expand || idx === 0 || idx < (ITEM_IN_LINE - slotsCount - 1)" :span="item.colSpan || SPAN">
           <a-form-item
@@ -142,9 +145,6 @@ const handleClear = () => {
           </a-form-item>
         </a-col>
       </template>
-      <a-col v-if="slotsCount" :span="SPAN">
-        <slot name="default"></slot>
-      </a-col>
       <a-col class="text-right mb-3" :span="SPAN" :offset="btnGroupOffset">
         <a-button type="primary" html-type="submit">
           <BaseIcon icon="i-mdi-magnify" />

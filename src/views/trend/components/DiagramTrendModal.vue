@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import type { Key, Recordable } from '@/types';
-import type { TagConstructRecord } from '@/api/base/tag/types';
-import type { TreeNode as TreeNodeType } from '@/utils/tree';
-import type { DefaultOptionType } from 'ant-design-vue/es/vc-select/Select';
 
-const tags = defineModel<TreeNodeType<TagConstructRecord>[]>('tags', { default: () => [] });
+import { HisDataType } from '@/constants/enums';
+import type { QueryFormField } from '@/components/common/query-form/types';
+import type QueryForm from '@/components/common/query-form/QueryForm.vue';
+import type { Recordable } from '@/types';
+
+const open = defineModel('open', { default: false });
+
+const props = defineProps<{
+  tags?: string[];
+}>();
 
 const emit = defineEmits<{
   (e: 'submit'): void
 }>();
 
-const selectedPoints = ref<Key[]>([]);
-const selectedPointOptions = ref<DefaultOptionType>([]);
+const loading = ref<boolean>(false);
 
 const tagStatList = ref<{
   nodeTag: string;
@@ -21,58 +25,60 @@ const tagStatList = ref<{
 }[]>([]);
 
 const qForm = ref<Recordable<any>>({
-  selectedPoints: [],
   time: [dayjs().subtract(2, 'hours'), dayjs()],
   multiCheck: [],
 });
+const queryFields: QueryFormField[] = [
+  {
+    field: 'time',
+    component: 'RangePicker',
+    labelCol: { span: 4 },
+    wrapperCol: { span: 24 },
+    compProps: {
+      placeholder: ['请选择开始时间', '请选择结束时间'],
+      showTime: { defaultValue: dayjs('00:00:00', 'HH:mm:ss') },
+    },
+  },
+  {
+    field: 'multiCheck',
+    component: 'Checkbox',
+    compProps: {
+      options: [{
+        label: '多坐标轴',
+        value: 'multiCheck',
+      }],
+    },
+  },
+];
 
-const fields = ref(customTrendFields);
-
-watch(tags, (tags) => {
-  selectedPointOptions.value = tags?.map(tag => {
-    return {
-      label: tag.description,
-      value: tag.getId(),
-    };
-  });
-  selectedPoints.value = tags?.map(tag => tag.getId()!);
+watch(open, (v) => {
+  if (v && props.tags) {
+    fetch();
+  }
 });
-
-const handleDeselect = (value: Key) => {
-  tags.value = tags.value.filter(tag => tag.getId() !== value);
-};
-
-const onQuery = (form: Record<string, string>) => {
-  qForm.value = form;
-  fetch();
-};
 
 // ECharts 初始化
 const chartRef = ref<ComponentPublicInstance>();
 const { renderECharts, setEChartsLoading } = useECharts(chartRef!);
 
-tryOnMounted(() => {
-  renderECharts(generalLineChartOption);
-});
-
 const fetch = async () => {
-  if (!tags.value) return;
+  if (!props.tags) return;
   setEChartsLoading(true);
   const data = await getTrendData({
-    tags: tags.value.map(tag => tag.getId()).join('|'),
+    tags: props.tags.join('|'),
     st: qForm.value.time[0],
     ed: qForm.value.time[1],
-    interval: 300,
+    interval: 60,
     type: HisDataType.TIME_VALUE_ARR,
   });
 
   tagStatList.value = [];
-  tags.value.forEach((item, index) => {
+  props.tags.forEach((item, index) => {
     const tagValue = data.map((it: string[]) => isNaN(Number(it[index + 1])) ? 0 : Number(it[index + 1]));
     const sm = sum(tagValue);
     const avg = unref(usePrecision(sm / tagValue.length, 2));
     tagStatList.value.push({
-      nodeTag: item.getId() as string,
+      nodeTag: item,
       max: max(tagValue),
       min: min(tagValue),
       avg,
@@ -99,20 +105,20 @@ const fetch = async () => {
 
   await renderECharts(merge({}, generalLineChartOption, {
     grid: {
-      left: multiCheck ? 40 + (tags.value.length - 1) * 30 + 'px' : '40px',
+      left: multiCheck ? 40 + (props.tags.length - 1) * 30 + 'px' : '40px',
     },
     legend: {
-      data: tags.value.map(item => {
+      data: props.tags.map(item => {
         return { name: item, icon: 'rect' };
       }),
     },
-    yAxis: multiCheck ? tags.value.map((_, index) => {
+    yAxis: multiCheck ? props.tags.map((_, index) => {
       return Object.assign({}, yAxisItem, {
         // name: item,
         offset: 30 * index,
       });
     }) : [yAxisItem],
-    series: tags.value.map((item, index) => {
+    series: props.tags.map((item, index) => {
       let series = {
         name: item,
         type: 'line',
@@ -135,37 +141,21 @@ const fetch = async () => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <QueryForm
-      :fields="fields"
+  <a-modal v-model:open="open"
+    title="测点趋势"
+    width="1100px"
+    :confirm-loading="loading"
+    :footer="null"
+  >
+    <QueryForm class="pt-4 pb-1 sticky top-0 z-12"
+      :fields="queryFields"
       v-model:form="qForm"
-      @query="onQuery"
-    >
-      <a-col :span="8">
-        <a-form-item
-          label="已选测点"
-          name="selectedPoints"
-          :label-col="{ span: 4 }"
-          :wrapper-col="{ span: 20 }"
-          validateStatus="success"
-          help=""
-        >
-          <BaseSelect
-            v-model:value="selectedPoints"
-            placeholder="请在左侧树中选择测点"
-            mode="multiple"
-            :maxTagCount="6"
-            :maxTagTextLength="8"
-            :options="selectedPointOptions"
-            :allow-clear="false"
-            @deselect="handleDeselect"
-          />
-        </a-form-item>
-      </a-col>
+      @query="fetch"
+      :itemInLine="3">
     </QueryForm>
-    <ECharts class="h-600px bg-ant.bg-container rounded-ant.br" ref="chartRef" />
-    <a-descriptions title="测点统计" class="bg-ant.bg-container rounded-ant.br flex-1 p-3 mt-3"
-      bordered :column="4"
+    <ECharts class="h-500px" ref="chartRef" />
+    <a-descriptions v-if="tagStatList.length"
+      mt-3 bordered :column="4"
     >
       <template v-for="item in tagStatList">
         <a-descriptions-item label="测点">{{ item.nodeTag }}</a-descriptions-item>
@@ -174,5 +164,5 @@ const fetch = async () => {
         <a-descriptions-item label="最小值">{{ item.min }}</a-descriptions-item>
       </template>
     </a-descriptions>
-  </div>
+  </a-modal>
 </template>

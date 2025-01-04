@@ -2,22 +2,6 @@ import type { QueryFormField } from '@/components/common/query-form/types';
 
 export const customTrendFields: QueryFormField[] = [
   {
-    label: '已选测点',
-    field: 'selectedPoints',
-    component: 'Select',
-    colSpan: 8,
-    labelCol: { span: 4 },
-    wrapperCol: { span: 20 },
-    compProps: {
-      placeholder: '请在左侧树中选择测点',
-      mode: 'multiple',
-      maxTagCount: 6,
-      maxTagTextLength: 10,
-      options: [],
-      allowClear: false,
-    },
-  },
-  {
     field: 'time',
     component: 'RangePicker',
     colSpan: 8,
