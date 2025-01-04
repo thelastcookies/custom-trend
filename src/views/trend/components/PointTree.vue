@@ -3,7 +3,7 @@ import type { Key, Recordable } from '@/types';
 import type { DataNode, EventDataNode } from 'ant-design-vue/es/vc-tree/interface';
 import { TreeNode, type TreeNode as TreeNodeType } from '@/utils/tree';
 import type { TagConstructRecord } from '@/api/base/tag/types';
-import type { TreeProps } from 'ant-design-vue';
+import { message, type TreeProps } from 'ant-design-vue';
 
 const tags = defineModel<TreeNodeType<TagConstructRecord>[]>('tags', { default: () => [] });
 
@@ -39,8 +39,8 @@ const search = useDebounceFn(async () => {
   await setTreeNodeChildrenByDesc(searchValue.value);
 }, 500);
 
-watch(searchValue, () => {
-  if (!tree.value || !tree.value.length) return;
+watch(searchValue, (val) => {
+  if (!tree.value || !tree.value.length || !val) return;
   search();
 });
 
@@ -62,8 +62,8 @@ const handleExpand = (keys: Key[]) => {
 const fetch = async () => {
   loading.value = true;
   try {
-    // todo 发布时删除
     const { data, code } = await getTagConstruct();
+    // todo 发布时删除
     // const { data, code } = getTagConstructMock;
     if (code !== 200) return;
 
@@ -73,6 +73,8 @@ const fetch = async () => {
       }) as any));
       expandedKeys.value = [tree.value[0].getId()!];
     }
+  } catch (e) {
+    message.error('测点请求失败');
   } finally {
     loading.value = false;
   }
@@ -111,14 +113,14 @@ const handleLoadMore = async (id: string) => {
 const setTreeNodeChildrenById = async (id: string) => {
   const node = findTreeNodeById(tree.value!, id)!;
   const page = node.page + 1;
-  // todo 发布时删除
-  // const { data, code } = getTagPointMock;
   const { data, code } = await getTagPoint({
     size: '10',
     current: String(page),
     classificationId: node.hierarchy === 2 ? node.getId() : node.classificationId,
     tagdesc: searchValue.value,
   });
+  // todo 发布时删除
+  // const { data, code } = getTagPointMock;
   if (code !== 200 || !data || !data.length) {
     return;
   }
@@ -157,12 +159,13 @@ const setTreeNodeChildrenById = async (id: string) => {
 const setTreeNodeChildrenByDesc = async (desc: string) => {
   loading.value = true;
   try {
-    // todo 发布时删除
     const { data, code } = await getTagPoint({
       size: '10000',
       current: '1',
       tagdesc: desc,
+      classificationId: String(selectedKeys.value[0]),
     });
+    // todo 发布时删除
     // const { data, code } = getTagPointByDescMock;
     if (code !== 200 || !data || !data.length) {
       return;
@@ -212,6 +215,8 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
     }
     expandedKeys.value = expKeys;
     autoExpandParent.value = true;
+  } catch (e) {
+    message.error('测点请求失败');
   } finally {
     loading.value = false;
   }
