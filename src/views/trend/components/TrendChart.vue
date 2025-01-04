@@ -3,12 +3,9 @@ import type { Key, Recordable } from '@/types';
 import type { TagConstructRecord } from '@/api/base/tag/types';
 import type { TreeNode as TreeNodeType } from '@/utils/tree';
 import type { DefaultOptionType } from 'ant-design-vue/es/vc-select/Select';
+import { message } from 'ant-design-vue';
 
 const tags = defineModel<TreeNodeType<TagConstructRecord>[]>('tags', { default: () => [] });
-
-const emit = defineEmits<{
-  (e: 'submit'): void
-}>();
 
 const selectedPoints = ref<Key[]>([]);
 const selectedPointOptions = ref<DefaultOptionType>([]);
@@ -59,55 +56,53 @@ tryOnMounted(() => {
 const fetch = async () => {
   if (!tags.value) return;
   setEChartsLoading(true);
-  const data = await getTrendData({
-    tags: tags.value.map(tag => tag.getId()).join('|'),
-    st: qForm.value.time[0],
-    ed: qForm.value.time[1],
-    interval: 300,
-    type: HisDataType.TIME_VALUE_ARR,
-  });
-
-  tagStatList.value = [];
-  tags.value.forEach((item, index) => {
-    const tagValue = data.map((it: string[]) => isNaN(Number(it[index + 1])) ? 0 : Number(it[index + 1]));
-    const sm = sum(tagValue);
-    const avg = unref(usePrecision(sm / tagValue.length, 2));
-    tagStatList.value.push({
-      tag: item.getId() as string,
-      desc: item.description as string,
-      max: max(tagValue),
-      min: min(tagValue),
-      avg,
-    });
-  });
-
-  const multiCheck = qForm.value.multiCheck?.includes('multiCheck');
-
-  const yAxisItem = {
-    type: 'value',
-    position: 'left',
-    axisTick: { show: false },
-    alignTicks: true,
-    axisLabel: {
-      hideOverlap: true,
-    },
-    splitLine: {
-      show: true,
-      lineStyle: {
-        type: 'dashed',
-      },
-    },
-  };
-
   try {
+    const data = await getTrendData({
+      tags: tags.value.map(tag => tag.getId()).join('|'),
+      st: qForm.value.time[0],
+      ed: qForm.value.time[1],
+      interval: 300,
+      type: HisDataType.TIME_VALUE_ARR,
+    });
+
+    tagStatList.value = [];
+    tags.value.forEach((item, index) => {
+      const tagValue = data.map((it: string[]) => isNaN(Number(it[index + 1])) ? 0 : Number(it[index + 1]));
+      const sm = sum(tagValue);
+      const avg = unref(usePrecision(sm / tagValue.length, 2));
+      tagStatList.value.push({
+        tag: item.getId() as string,
+        desc: item.description as string,
+        max: max(tagValue),
+        min: min(tagValue),
+        avg,
+      });
+    });
+
+    const multiCheck = qForm.value.multiCheck?.includes('multiCheck');
+
+    const yAxisItem = {
+      type: 'value',
+      position: 'left',
+      axisTick: { show: false },
+      alignTicks: true,
+      axisLabel: {
+        hideOverlap: true,
+      },
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed',
+        },
+      },
+    };
+
     await renderECharts(merge({}, generalLineChartOption, {
       grid: {
         left: multiCheck ? 40 + (tags.value.length - 1) * 30 + 'px' : '40px',
+        top: tags.value.length > 6 ? 60 + Math.floor(tags.value.length / 6) * 20 + 'px' : '60px',
       },
       legend: {
-        itemWidth: 10,
-        itemHeight: 10,
-        top: '20px',
         data: tags.value.map(item => {
           return { name: item.description, icon: 'rect' };
         }),
@@ -120,7 +115,7 @@ const fetch = async () => {
       }) : [yAxisItem],
       series: tags.value.map((item, index) => {
         let series = {
-          name: item,
+          name: item.description,
           type: 'line',
           symbol: 'none',
         };
@@ -135,6 +130,8 @@ const fetch = async () => {
         source: data,
       },
     }), true);
+  } catch (e) {
+    message.error('数据请求失败，请检查是否含有非法测点');
   } finally {
     setEChartsLoading(false);
   }
@@ -143,7 +140,7 @@ const fetch = async () => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col overflow-y-auto">
     <QueryForm
       :fields="fields"
       v-model:form="qForm"
