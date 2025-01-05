@@ -3,7 +3,7 @@ import type { Key, Recordable } from '@/types';
 import type { DataNode, EventDataNode } from 'ant-design-vue/es/vc-tree/interface';
 import { TreeNode, type TreeNode as TreeNodeType } from '@/utils/tree';
 import type { TagConstructRecord } from '@/api/base/tag/types';
-import { message, type TreeProps } from 'ant-design-vue';
+import { Empty, message, type TreeProps } from 'ant-design-vue';
 
 const tags = defineModel<TreeNodeType<TagConstructRecord>[]>('tags', { default: () => [] });
 
@@ -168,6 +168,7 @@ const handleLoadMore = async (id: string) => {
 
 // 动态获取子节点并添加
 const setTreeNodeChildrenById = async (id: string) => {
+  alertVisible.value = false;
   const treeNative = cloneDeep(tree.value);
   const node = findTreeNodeById(treeNative, id)!;
   const page = node.page + 1;
@@ -223,6 +224,7 @@ const setTreeNodeChildrenById = async (id: string) => {
 
 // 根据查询条件获取子节点并添加
 const setTreeNodeChildrenByDesc = async (desc: string) => {
+  alertVisible.value = false;
   const treeNative = cloneDeep(tree.value);
   try {
     const { data, code } = await getTagPoint({
@@ -233,7 +235,7 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
     });
     // todo 发布时删除
     // const { data, code } = getTagPointByDescMock;
-    if (code !== 200 || !data || !data.length) {
+    if (code !== 200 || !data) {
       return;
     }
     // 组织数据
@@ -304,7 +306,7 @@ const alertVisible = ref(false);
       @search="handleSearch"
     />
     <a-divider my-4 />
-    <a-spin wrapperClassName="h-[calc(100%-65px)] w-full of-y-auto" :spinning="loading">
+    <a-spin wrapperClassName="flex-1 w-full of-y-auto flex" :spinning="loading">
       <a-alert
         v-if="alertVisible"
         message="符合当前搜索条件的测点条目过多，未能全部展示。为了您的使用体验，请尝试减小搜索范围或输入更精准的描述以搜索。"
@@ -312,7 +314,7 @@ const alertVisible = ref(false);
         closable
         @close="alertVisible = false"
       />
-      <a-tree
+      <a-tree v-if="filteredTree && filteredTree.length"
         class="w-full flex-1"
         checkable
         checkStrictly
@@ -341,6 +343,7 @@ const alertVisible = ref(false);
           </div>
         </template>
       </a-tree>
+      <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE"></a-empty>
     </a-spin>
   </div>
 </template>
