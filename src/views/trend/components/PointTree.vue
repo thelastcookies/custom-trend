@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Key, Recordable } from '@/types';
 import type { DataNode, EventDataNode } from 'ant-design-vue/es/vc-tree/interface';
-import { TreeNode, type TreeNode as TreeNodeType } from '@/utils/tree';
+import type { TreeNode as TreeNodeType } from '@/utils/tree';
 import type { TagConstructRecord } from '@/api/base/tag/types';
 import { Empty, message, type TreeProps } from 'ant-design-vue';
 
@@ -45,18 +45,10 @@ watch(tags, () => {
 const searchValueInput = ref<string>('');
 // 搜索时的输入内容
 const searchValue = ref<string>('');
-
-// watch(searchValue, (val) => {
-//   if (!tree.value || !tree.value.length) return;
-//   if (val === '') {
-//     filteredTree.value = tree.value;
-//     return;
-//   } else search();
-// });
-
-// const search = useDebounceFn(async () => {
-//   await setTreeNodeChildrenByDesc(searchValue.value);
-// }, 500);
+const searchValueFields = computed(() => searchValue.value.split(' ').filter(s => s !== ''));
+const searchReg = computed(() => {
+  return searchValueFields.value.length ? new RegExp(searchValueFields.value.join('|'), 'g') : undefined;
+});
 
 // 监听树数据变化并更新前端筛选结果
 watch(tree, () => {
@@ -68,23 +60,16 @@ watch(tree, () => {
   deep: true,
 });
 
-// const filterTree = useDebounceFn(() => {
-//   if (!tree.value) filteredTree.value = [];
-//   else {
-//     const treeNative = cloneDeep(tree.value);
-//     filteredTree.value = filterTreeNode(treeNative);
-//   }
-// }, 200);
-
 // 树前端筛选递归方法
 const filterTreeNode = (tree: TreeNodeType<TagConstructRecord>[]) => {
   return tree.filter((node) => {
     const children: TreeNodeType<TagConstructRecord>[] = node.children ? filterTreeNode(node.children) : [];
-    if (node.description.indexOf(searchValue.value) > -1 || children.length > 0) {
+    if (!searchValueFields.value.length || children.length > 0) {
       if (node.hierarchy) node.setChildren(children);
       return true;
     }
-    return false;
+    const regRes = node.description.match(searchReg.value);
+    return !!(regRes && regRes.length === searchValueFields.value.length);
   });
 };
 
@@ -115,8 +100,8 @@ const handleExpand = (keys: Key[]) => {
 const fetch = async () => {
   loading.value = true;
   try {
+    // todo 发布时注意
     const { data, code } = await getTagConstruct();
-    // todo 发布时删除
     // const { data, code } = getTagConstructMock;
     if (code !== 200) return;
     if (data) {
@@ -173,13 +158,13 @@ const setTreeNodeChildrenById = async (id: string) => {
   const node = findTreeNodeById(treeNative, id)!;
   const page = node.page + 1;
   const size = 10;
+  // todo 发布时注意
   const { data, code } = await getTagPoint({
     size,
     current: page,
     classificationId: node.hierarchy === 2 ? node.getId() : node.classificationId,
     tagdesc: searchValue.value,
   });
-  // todo 发布时删除
   // const { data, code } = getTagPointMock;
   if (code !== 200 || !data || !data.length) {
     return;
@@ -227,19 +212,19 @@ const setTreeNodeChildrenByDesc = async (desc: string) => {
   alertVisible.value = false;
   const treeNative = cloneDeep(tree.value);
   try {
+    // todo 发布时注意
     const { data, code } = await getTagPoint({
       size: 10000,
       current: 1,
       tagdesc: desc,
       classificationId: selectedKeys.value[0] as number || undefined,
     });
-    // todo 发布时删除
     // const { data, code } = getTagPointByDescMock;
     if (code !== 200 || !data) {
       return;
     }
     // 组织数据
-    let idChildrenMap: Recordable<TreeNode[]> = {};
+    let idChildrenMap: Recordable<TreeNodeType[]> = {};
     let expKeys: Key[] = [];
     data.forEach(item => {
       const node = new TreeNode({
@@ -329,18 +314,7 @@ const alertVisible = ref(false);
         @expand="handleExpand"
       >
         <template #title="{ id, description, reload }">
-          <div class="flex tree-node-title">
-            <div v-if="description && searchValue && description.indexOf(searchValue) > -1">
-              {{ description.substring(0, description.indexOf(searchValue)) }}
-              <span class="c-ant.error">{{ searchValue }}</span>
-              {{ description.substring(description.indexOf(searchValue) + searchValue.length) }}
-            </div>
-            <div v-else-if="reload" class="c-ant.link" @click="handleLoadMore(id)">
-              <BaseIcon class="mr-2" icon="i-mdi-reload" />
-              <span class="">{{ description }}</span>
-            </div>
-            <div v-else>{{ description }}</div>
-          </div>
+          <PointTreeNodeLabel :label="description" :query="searchReg" :reload @reload="handleLoadMore(id)" />
         </template>
       </a-tree>
       <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE"></a-empty>
