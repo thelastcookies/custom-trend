@@ -3,7 +3,7 @@ import type { Key, Recordable } from '@/types';
 import type { TagConstructRecord } from '@/api/base/tag/types';
 import type { TreeNode as TreeNodeType } from '@/utils/tree';
 import type { DefaultOptionType } from 'ant-design-vue/es/vc-select/Select';
-import { message } from 'ant-design-vue';
+import type { Rule } from 'ant-design-vue/es/form';
 
 const tags = defineModel<TreeNodeType<TagConstructRecord>[]>('tags', { default: () => [] });
 
@@ -20,9 +20,25 @@ const tagStatList = ref<{
 
 const qForm = ref<Recordable<any>>({
   selectedPoints: [],
-  time: [dayjs().subtract(2, 'hours'), dayjs()],
+  time: [dayjs().subtract(8, 'hours'), dayjs()],
   multiCheck: [],
 });
+
+const rules: Record<string, Rule[]> = {
+  selectedPoints: [{ required: true, message: '请至少选择一个测点以查询' }],
+  time: [{
+    validator(_, value) {
+      if (!value || value.length !== 2) {
+        return Promise.reject('请选择时间范围');
+      }
+      const [start, end] = value;
+      if (dayjs(start).isSame(end, 'month')) {
+        return Promise.resolve();
+      }
+      return Promise.reject('起止时间不可跨月');
+    },
+  }],
+};
 
 const fields = ref(customTrendFields);
 
@@ -43,6 +59,12 @@ const handleDeselect = (value: Key) => {
 const onQuery = (form: Record<string, string>) => {
   qForm.value = form;
   fetch();
+};
+
+const onClear = () => {
+  tags.value = [];
+  renderECharts(generalLineChartOption, true);
+  tagStatList.value = [];
 };
 
 // ECharts 初始化
@@ -143,8 +165,10 @@ const fetch = async () => {
   <div class="h-full flex flex-col overflow-y-auto">
     <QueryForm
       :fields="fields"
+      :rules="rules"
       v-model:form="qForm"
       @query="onQuery"
+      @clear="onClear"
     >
       <a-col :span="8">
         <a-form-item

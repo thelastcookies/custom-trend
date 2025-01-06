@@ -30,4 +30,7 @@ export const customImports: ImportsMap = {
   'mitt': [
     ['default', 'mitt'],
   ],
+  'ant-design-vue': [
+    'message',
+  ]
 };

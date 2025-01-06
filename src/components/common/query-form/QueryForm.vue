@@ -26,6 +26,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'query', value: Recordable<any>): void;
+  (e: 'clear'): void;
 }>();
 
 const slots = useSlots();
@@ -89,7 +90,8 @@ const btnGroupOffset = computed(() => {
  **/
 const handleClear = () => {
   formRef.value!.resetFields();
-  emit('query', {});
+  form.value = {};
+  emit('clear');
 };
 
 </script>
