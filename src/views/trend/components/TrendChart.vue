@@ -25,17 +25,18 @@ const qForm = ref<Recordable<any>>({
 });
 
 const rules: Record<string, Rule[]> = {
-  selectedPoints: [{ required: true, message: '请至少选择一个测点以查询' }],
+  selectedPoints: [{
+    validator() {
+      if (tags.value.length === 0) {
+        return Promise.reject('请至少选择一个测点以查询');
+      } else return Promise.resolve();
+    },
+  }],
   time: [{
     validator(_, value) {
       if (!value || value.length !== 2) {
         return Promise.reject('请选择时间范围');
-      }
-      const [start, end] = value;
-      if (dayjs(start).isSame(end, 'month')) {
-        return Promise.resolve();
-      }
-      return Promise.reject('起止时间不可跨月');
+      } else return Promise.resolve();
     },
   }],
 };
