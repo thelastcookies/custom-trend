@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.0.0 (2025-01-26)
+
+
+### Features
+
+* 同步基线工程更新 ([05746ac](https://github.com/thelastcookies/custom-trend/commit/05746ac26e281a710dfa8808aecf5db64fd3c7cf))
+* 完善搜索功能，支持按搜索结果前端筛选 ([ea18ef8](https://github.com/thelastcookies/custom-trend/commit/ea18ef8c7d94d4113d213ee7bfe0271fb93e1335))
+* 完善曲线统计展示内容 ([8397f5b](https://github.com/thelastcookies/custom-trend/commit/8397f5b5f949385dace109d9480f6020ea798abc))
+* 完成自定义趋势基本功能 ([6948414](https://github.com/thelastcookies/custom-trend/commit/694841489af62e2eed7e0eb8abebfdaf6d4c3ff2))
+* 弃用输入时搜索，改为输入后手动触发 ([28dcef4](https://github.com/thelastcookies/custom-trend/commit/28dcef4115d244624ab7c13c7184c0b27c017f93))
+* 新增多段关键词搜索支持 ([3ae0423](https://github.com/thelastcookies/custom-trend/commit/3ae04234f797e4502071f784f0c435cd2c2106d8))
+* 新增时间选择预设与可选范围、查询合法性校验，修复清空按钮的问题 ([2cca2f8](https://github.com/thelastcookies/custom-trend/commit/2cca2f82f83dcbd7ff46fd5ad5502412a5c0ee53))
+* 新增测点搜索功能 ([631f0d0](https://github.com/thelastcookies/custom-trend/commit/631f0d02d8b069619f7ea5d63ff018e14db63618))
+* 新增页面基本功能 ([953f9f5](https://github.com/thelastcookies/custom-trend/commit/953f9f5564a1f91c80004513d3b8112f60572b74))
+* 配置数据请求接口 ([9f2ea31](https://github.com/thelastcookies/custom-trend/commit/9f2ea3141147e53933b31d6d913e1ff35a7f1889))
+
+
+### Bug Fixes
+
+* 修复图表 series 错误，增加出错提示，图表样式自适应 ([21f4639](https://github.com/thelastcookies/custom-trend/commit/21f4639ded366cae94735ed780b7fb5efbc49057))
+* 修复图表查询参数校验问题 ([c958e66](https://github.com/thelastcookies/custom-trend/commit/c958e667d7840a0872d0f3cff119b72cca2ef8a4))
+* 修复查询返回结果为空时的异常状态，增加交互细节 ([285942a](https://github.com/thelastcookies/custom-trend/commit/285942ac145c8fd6568cd7475c6da39c8e7cac13))
+* 修复获取子节点方法中父 ID 没有正确传入的问题 ([85bc0ed](https://github.com/thelastcookies/custom-trend/commit/85bc0ed5ec59228fe4b6503ca89d956b22298dd2))
+* 修复请求数据失败后 loading 状态未恢复的问题 ([d25d27c](https://github.com/thelastcookies/custom-trend/commit/d25d27cbbacd060805a6ce8a9d46cee4d1662a44))
+
 ## [0.24.0](https://github.com/thelastcookies/WEB-BASE/compare/v0.23.0...v0.24.0) (2024-12-24)
 
 
