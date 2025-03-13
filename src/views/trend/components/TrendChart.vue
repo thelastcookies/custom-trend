@@ -13,9 +13,9 @@ const selectedPointOptions = ref<DefaultOptionType>([]);
 const tagStatList = ref<{
   tag: string;
   desc: string;
+  avg: number;
   max: number;
   min: number;
-  avg: number;
 }[]>([]);
 
 const qForm = ref<Recordable<any>>({
@@ -194,15 +194,8 @@ const fetch = async () => {
       </a-col>
     </QueryForm>
     <ECharts class="h-600px bg-ant.bg-container rounded-ant.br" ref="chartRef" />
-    <a-descriptions title="测点统计" bordered :column="5"
-      class="bg-ant.bg-container rounded-ant.br flex-1 p-3 mt-3">
-      <template v-for="item in tagStatList">
-        <a-descriptions-item label="测点">{{ item.tag }}</a-descriptions-item>
-        <a-descriptions-item label="描述">{{ item.desc }}</a-descriptions-item>
-        <a-descriptions-item label="平均值">{{ item.avg }}</a-descriptions-item>
-        <a-descriptions-item label="最大值">{{ item.max }}</a-descriptions-item>
-        <a-descriptions-item label="最小值">{{ item.min }}</a-descriptions-item>
-      </template>
-    </a-descriptions>
+    <a-table class="mt-3" :columns="trendTableColumns" :data-source="tagStatList" :pagination="false">
+      <template #title>测点统计</template>
+    </a-table>
   </div>
 </template>

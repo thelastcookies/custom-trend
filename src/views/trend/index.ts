@@ -59,3 +59,26 @@ export const customTrendFields: QueryFormField[] = [
     },
   },
 ];
+
+export const trendTableColumns = [
+  {
+    title: '测点',
+    dataIndex: 'tag',
+  },
+  {
+    title: '描述',
+    dataIndex: 'desc',
+  },
+  {
+    title: '平均值',
+    dataIndex: 'avg',
+  },
+  {
+    title: '最大值',
+    dataIndex: 'max',
+  },
+  {
+    title: '最小值',
+    dataIndex: 'min',
+  },
+];
